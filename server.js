@@ -5,12 +5,15 @@ const hbs = require("express-handlebars");
 const { Server: HttpServer } = require("http");
 const { normalize, schema } = require("normalizr");
 const util = require("util");
+const routerRandom = require("./routers/random.js");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const { ne } = require("faker/lib/locales");
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const { userDaos: User } = require("./daos/mainDaos");
+const { MONGO_URL, SECRET } = require("./src/views/config");
+const parseArgs = require("minimist");
 const script = require("bcrypt");
 const saltRounds = 10;
 
@@ -28,16 +31,18 @@ app.use(cookieParser());
 app.use(
   session({
     store: MongoStore.create({
-      mongoUrl:
-        "mongodb+srv://ramiro:ramiro12345@cluster0.so7yn.mongodb.net/coder?retryWrites=true&w=majority",
+      mongoUrl: MONGO_URL,
       mongoOptions: advancedOptions,
       ttl: 30,
     }),
-    secret: "secreto",
+    secret: SECRET,
     resave: true,
     saveUninitialized: true,
   })
 );
+
+const opciones = { default: { port: 8080 } };
+const { port: parPort } = parseArgs(process.argv.splice(2), opciones);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -110,6 +115,23 @@ app.engine(
 app.set("view engine", ".hbs");
 
 //rutas
+
+app.get("/info", (req, res) => {
+  const { argv, execPath, platform, version, pid, memoryUsage, cwd } = process;
+  const { rss } = memoryUsage();
+  res.render("info", {
+    layout: "main",
+    argv,
+    execPath,
+    platform,
+    version,
+    pid,
+    rss,
+    currentDir: cwd(),
+  });
+});
+
+app.use("/api", routerRandom);
 
 app.get("/login", (req, res) => {
   req.logOut();
